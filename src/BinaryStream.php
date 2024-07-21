@@ -23,12 +23,6 @@ declare(strict_types=1);
 
 namespace pocketmine\utils;
 
-use function bedrockbuf_readFloat;
-use function bedrockbuf_readLTriad;
-use function bedrockbuf_readUnsignedShort;
-use function bedrockbuf_readVarLong;
-use function bedrockbuf_writeLShort;
-use function bedrockbuf_writeLTriad;
 use function chr;
 use function ord;
 use function round;
@@ -154,7 +148,7 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLShort() : int{
-		return bedrockbuf_readLShort($this->get(2)) ?? throw new BinaryDataException("Failed to read LShort");
+		return bedrockbuf_readLUnsignedShort($this->get(2)) ?? throw new BinaryDataException("Failed to read LShort");
 	}
 
 	/**
