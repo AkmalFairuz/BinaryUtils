@@ -23,41 +23,62 @@ declare(strict_types=1);
 
 namespace pocketmine\utils;
 
-use function chr;
-use function ord;
-use function strlen;
-use function substr;
+use AkmalFairuz\ByteBuf\ByteBuf;
+use function round;
 
 class BinaryStream{
-	//TODO: use typed properties when https://bugs.php.net/bug.php?id=81090 is fixed
-
-	/** @var int */
-	protected $offset;
-	/** @var string */
-	protected $buffer;
+	private ByteBuf $byteBuf;
 
 	public function __construct(string $buffer = "", int $offset = 0){
-		$this->buffer = $buffer;
-		$this->offset = $offset;
+		if($buffer === ""){
+			$this->byteBuf = ByteBuf::alloc(32);
+		}else{
+			$this->byteBuf = ByteBuf::fromString($buffer);
+		}
+		$this->byteBuf->setOffset($offset);
+	}
+
+	public function __get(string $name) : mixed{
+		return match($name){
+			"buffer" => $this->byteBuf->toString(),
+			"offset" => $this->byteBuf->getOffset(),
+			default => throw new \Error("Undefined property: " . static::class . "::$name")
+		};
+	}
+
+	public function __set(string $name, mixed $value) : void{
+		if($name === "buffer"){
+			if(!is_string($value)){
+				throw new \TypeError("Property " . static::class . "::$name expects string, " . gettype($value) . " given");
+			}
+			$this->byteBuf = ByteBuf::fromString($value);
+		}elseif($name === "offset"){
+			if(!is_int($value)){
+				throw new \TypeError("Property " . static::class . "::$name expects int, " . gettype($value) . " given");
+			}
+			$this->byteBuf->setOffset($value);
+		}else{
+			throw new \Error("Undefined property: " . static::class . "::$name");
+		}
 	}
 
 	/**
 	 * Rewinds the stream pointer to the start.
 	 */
 	public function rewind() : void{
-		$this->offset = 0;
+		$this->byteBuf->setOffset(0);
 	}
 
 	public function setOffset(int $offset) : void{
-		$this->offset = $offset;
+		$this->byteBuf->setOffset($offset);
 	}
 
 	public function getOffset() : int{
-		return $this->offset;
+		return $this->byteBuf->getOffset();
 	}
 
 	public function getBuffer() : string{
-		return $this->buffer;
+		return $this->byteBuf->toString();
 	}
 
 	/**
@@ -65,19 +86,7 @@ class BinaryStream{
 	 * @throws BinaryDataException if there are not enough bytes left in the buffer
 	 */
 	public function get(int $len) : string{
-		if($len === 0){
-			return "";
-		}
-		if($len < 0){
-			throw new \InvalidArgumentException("Length must be positive");
-		}
-
-		$remaining = strlen($this->buffer) - $this->offset;
-		if($remaining < $len){
-			throw new BinaryDataException("Not enough bytes left in buffer: need $len, have $remaining");
-		}
-
-		return $len === 1 ? $this->buffer[$this->offset++] : substr($this->buffer, ($this->offset += $len) - $len, $len);
+		return $this->byteBuf->read($len);
 	}
 
 	/**
@@ -85,17 +94,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getRemaining() : string{
-		$buflen = strlen($this->buffer);
-		if($this->offset >= $buflen){
-			throw new BinaryDataException("No bytes left to read");
-		}
-		$str = substr($this->buffer, $this->offset);
-		$this->offset = $buflen;
-		return $str;
+		return $this->byteBuf->remaining();
 	}
 
 	public function put(string $str) : void{
-		$this->buffer .= $str;
+		$this->byteBuf->write($str);
 	}
 
 	/**
@@ -103,11 +106,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getBool() : bool{
-		return $this->get(1) !== "\x00";
+		return $this->byteBuf->read(1) !== "\x00";
 	}
 
 	public function putBool(bool $v) : void{
-		$this->buffer .= ($v ? "\x01" : "\x00");
+		$this->byteBuf->write($v ? "\x01" : "\x00");
 	}
 
 	/**
@@ -115,11 +118,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getByte() : int{
-		return ord($this->get(1));
+		return $this->byteBuf->readUnsignedByte();
 	}
 
 	public function putByte(int $v) : void{
-		$this->buffer .= chr($v);
+		$this->byteBuf->writeByte($v);
 	}
 
 	/**
@@ -127,7 +130,7 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getShort() : int{
-		return Binary::readShort($this->get(2));
+		return $this->byteBuf->readUnsignedShort();
 	}
 
 	/**
@@ -135,11 +138,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getSignedShort() : int{
-		return Binary::readSignedShort($this->get(2));
+		return $this->byteBuf->readShort();
 	}
 
 	public function putShort(int $v) : void{
-		$this->buffer .= Binary::writeShort($v);
+		$this->byteBuf->writeShort($v);
 	}
 
 	/**
@@ -147,7 +150,7 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLShort() : int{
-		return Binary::readLShort($this->get(2));
+		return $this->byteBuf->readLUnsignedShort();
 	}
 
 	/**
@@ -155,11 +158,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getSignedLShort() : int{
-		return Binary::readSignedLShort($this->get(2));
+		return $this->byteBuf->readLShort();
 	}
 
 	public function putLShort(int $v) : void{
-		$this->buffer .= Binary::writeLShort($v);
+		$this->byteBuf->writeLShort($v);
 	}
 
 	/**
@@ -167,11 +170,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getTriad() : int{
-		return Binary::readTriad($this->get(3));
+		return $this->byteBuf->readTriad();
 	}
 
 	public function putTriad(int $v) : void{
-		$this->buffer .= Binary::writeTriad($v);
+		$this->byteBuf->writeTriad($v);
 	}
 
 	/**
@@ -179,11 +182,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLTriad() : int{
-		return Binary::readLTriad($this->get(3));
+		return $this->byteBuf->readLTriad();
 	}
 
 	public function putLTriad(int $v) : void{
-		$this->buffer .= Binary::writeLTriad($v);
+		$this->byteBuf->writeLTriad($v);
 	}
 
 	/**
@@ -191,11 +194,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getInt() : int{
-		return Binary::readInt($this->get(4));
+		return $this->byteBuf->readInt();
 	}
 
 	public function putInt(int $v) : void{
-		$this->buffer .= Binary::writeInt($v);
+		$this->byteBuf->writeInt($v);
 	}
 
 	/**
@@ -203,11 +206,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLInt() : int{
-		return Binary::readLInt($this->get(4));
+		return $this->byteBuf->readLInt();
 	}
 
 	public function putLInt(int $v) : void{
-		$this->buffer .= Binary::writeLInt($v);
+		$this->byteBuf->writeLInt($v);
 	}
 
 	/**
@@ -215,7 +218,7 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getFloat() : float{
-		return Binary::readFloat($this->get(4));
+		return $this->byteBuf->readFloat();
 	}
 
 	/**
@@ -223,11 +226,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getRoundedFloat(int $accuracy) : float{
-		return Binary::readRoundedFloat($this->get(4), $accuracy);
+		return round($this->byteBuf->readFloat(), $accuracy);
 	}
 
 	public function putFloat(float $v) : void{
-		$this->buffer .= Binary::writeFloat($v);
+		$this->byteBuf->writeFloat($v);
 	}
 
 	/**
@@ -235,7 +238,7 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLFloat() : float{
-		return Binary::readLFloat($this->get(4));
+		return $this->byteBuf->readLFloat();
 	}
 
 	/**
@@ -243,11 +246,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getRoundedLFloat(int $accuracy) : float{
-		return Binary::readRoundedLFloat($this->get(4), $accuracy);
+		return round($this->byteBuf->readLFloat(), $accuracy);
 	}
 
 	public function putLFloat(float $v) : void{
-		$this->buffer .= Binary::writeLFloat($v);
+		$this->byteBuf->writeLFloat($v);
 	}
 
 	/**
@@ -255,11 +258,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getDouble() : float{
-		return Binary::readDouble($this->get(8));
+		return $this->byteBuf->readDouble();
 	}
 
 	public function putDouble(float $v) : void{
-		$this->buffer .= Binary::writeDouble($v);
+		$this->byteBuf->writeDouble($v);
 	}
 
 	/**
@@ -267,11 +270,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLDouble() : float{
-		return Binary::readLDouble($this->get(8));
+		return $this->byteBuf->readLDouble();
 	}
 
 	public function putLDouble(float $v) : void{
-		$this->buffer .= Binary::writeLDouble($v);
+		$this->byteBuf->writeLDouble($v);
 	}
 
 	/**
@@ -279,11 +282,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLong() : int{
-		return Binary::readLong($this->get(8));
+		return $this->byteBuf->readLong();
 	}
 
 	public function putLong(int $v) : void{
-		$this->buffer .= Binary::writeLong($v);
+		$this->byteBuf->writeLong($v);
 	}
 
 	/**
@@ -291,11 +294,11 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getLLong() : int{
-		return Binary::readLLong($this->get(8));
+		return $this->byteBuf->readLLong();
 	}
 
 	public function putLLong(int $v) : void{
-		$this->buffer .= Binary::writeLLong($v);
+		$this->byteBuf->writeLLong($v);
 	}
 
 	/**
@@ -305,14 +308,14 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getUnsignedVarInt() : int{
-		return Binary::readUnsignedVarInt($this->buffer, $this->offset);
+		return $this->byteBuf->readUnsignedVarInt();
 	}
 
 	/**
 	 * Writes a 32-bit variable-length unsigned integer to the end of the buffer.
 	 */
 	public function putUnsignedVarInt(int $v) : void{
-		$this->put(Binary::writeUnsignedVarInt($v));
+		$this->byteBuf->writeUnsignedVarInt($v);
 	}
 
 	/**
@@ -322,14 +325,14 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getVarInt() : int{
-		return Binary::readVarInt($this->buffer, $this->offset);
+		return $this->byteBuf->readVarInt();
 	}
 
 	/**
 	 * Writes a 32-bit zigzag-encoded variable-length integer to the end of the buffer.
 	 */
 	public function putVarInt(int $v) : void{
-		$this->put(Binary::writeVarInt($v));
+		$this->byteBuf->writeVarInt($v);
 	}
 
 	/**
@@ -339,14 +342,14 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getUnsignedVarLong() : int{
-		return Binary::readUnsignedVarLong($this->buffer, $this->offset);
+		return $this->byteBuf->readUnsignedVarLong();
 	}
 
 	/**
 	 * Writes a 64-bit variable-length integer to the end of the buffer.
 	 */
 	public function putUnsignedVarLong(int $v) : void{
-		$this->buffer .= Binary::writeUnsignedVarLong($v);
+		$this->byteBuf->writeUnsignedVarLong($v);
 	}
 
 	/**
@@ -356,20 +359,20 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getVarLong() : int{
-		return Binary::readVarLong($this->buffer, $this->offset);
+		return $this->byteBuf->readVarLong();
 	}
 
 	/**
 	 * Writes a 64-bit zigzag-encoded variable-length integer to the end of the buffer.
 	 */
 	public function putVarLong(int $v) : void{
-		$this->buffer .= Binary::writeVarLong($v);
+		$this->byteBuf->writeVarLong($v);
 	}
 
 	/**
 	 * Returns whether the offset has reached the end of the buffer.
 	 */
 	public function feof() : bool{
-		return !isset($this->buffer[$this->offset]);
+		return $this->byteBuf->getOffset() >= $this->byteBuf->getUsedBufferLength();
 	}
 }

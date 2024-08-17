@@ -26,17 +26,16 @@ declare(strict_types=1);
  */
 namespace pocketmine\utils;
 
-use InvalidArgumentException;
+use AkmalFairuz\ByteBuf\BE;
+use AkmalFairuz\ByteBuf\LE;
+use AkmalFairuz\ByteBuf\VarInt;
 use function chr;
 use function ord;
-use function pack;
 use function preg_replace;
 use function round;
 use function sprintf;
 use function strlen;
-use function substr;
 use function unpack;
-use const PHP_INT_MAX;
 
 class Binary{
 	private const SIZEOF_SHORT = 2;
@@ -151,7 +150,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readShort(string $str) : int{
-		return self::safeUnpack("n", $str, self::SIZEOF_SHORT)[1];
+		return BE::readUnsignedShort($str);
 	}
 
 	/**
@@ -160,14 +159,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readSignedShort(string $str) : int{
-		return self::signShort(self::safeUnpack("n", $str, self::SIZEOF_SHORT)[1]);
+		return BE::readShort($str);
 	}
 
 	/**
 	 * Writes a 16-bit signed/unsigned big-endian number
 	 */
 	public static function writeShort(int $value) : string{
-		return pack("n", $value);
+		return BE::writeUnsignedShort($value);
 	}
 
 	/**
@@ -176,7 +175,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLShort(string $str) : int{
-		return self::safeUnpack("v", $str, self::SIZEOF_SHORT)[1];
+		return LE::readUnsignedShort($str);
 	}
 
 	/**
@@ -185,14 +184,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readSignedLShort(string $str) : int{
-		return self::signShort(self::safeUnpack("v", $str, self::SIZEOF_SHORT)[1]);
+		return LE::readShort($str);
 	}
 
 	/**
 	 * Writes a 16-bit signed/unsigned little-endian number
 	 */
 	public static function writeLShort(int $value) : string{
-		return pack("v", $value);
+		return LE::writeUnsignedShort($value);
 	}
 
 	/**
@@ -201,14 +200,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readTriad(string $str) : int{
-		return self::safeUnpack("N", "\x00" . $str, self::SIZEOF_INT)[1];
+		return BE::readTriad($str);
 	}
 
 	/**
 	 * Writes a 3-byte big-endian number
 	 */
 	public static function writeTriad(int $value) : string{
-		return substr(pack("N", $value), 1);
+		return BE::writeTriad($value);
 	}
 
 	/**
@@ -217,14 +216,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLTriad(string $str) : int{
-		return self::safeUnpack("V", $str . "\x00", self::SIZEOF_INT)[1];
+		return LE::readTriad($str);
 	}
 
 	/**
 	 * Writes a 3-byte little-endian number
 	 */
 	public static function writeLTriad(int $value) : string{
-		return substr(pack("V", $value), 0, -1);
+		return LE::writeTriad($value);
 	}
 
 	/**
@@ -233,14 +232,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readInt(string $str) : int{
-		return self::signInt(self::safeUnpack("N", $str, self::SIZEOF_INT)[1]);
+		return BE::readInt($str);
 	}
 
 	/**
 	 * Writes a 4-byte integer
 	 */
 	public static function writeInt(int $value) : string{
-		return pack("N", $value);
+		return BE::writeInt($value);
 	}
 
 	/**
@@ -249,14 +248,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLInt(string $str) : int{
-		return self::signInt(self::safeUnpack("V", $str, self::SIZEOF_INT)[1]);
+		return LE::readInt($str);
 	}
 
 	/**
 	 * Writes a 4-byte signed little-endian integer
 	 */
 	public static function writeLInt(int $value) : string{
-		return pack("V", $value);
+		return LE::writeInt($value);
 	}
 
 	/**
@@ -265,7 +264,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readFloat(string $str) : float{
-		return self::safeUnpack("G", $str, self::SIZEOF_FLOAT)[1];
+		return BE::readFloat($str);
 	}
 
 	/**
@@ -274,14 +273,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readRoundedFloat(string $str, int $accuracy) : float{
-		return round(self::readFloat($str), $accuracy);
+		return round(BE::readFloat($str), $accuracy);
 	}
 
 	/**
 	 * Writes a 4-byte floating-point number.
 	 */
 	public static function writeFloat(float $value) : string{
-		return pack("G", $value);
+		return BE::writeFloat($value);
 	}
 
 	/**
@@ -290,7 +289,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLFloat(string $str) : float{
-		return self::safeUnpack("g", $str, self::SIZEOF_FLOAT)[1];
+		return LE::readFloat($str);
 	}
 
 	/**
@@ -299,14 +298,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readRoundedLFloat(string $str, int $accuracy) : float{
-		return round(self::readLFloat($str), $accuracy);
+		return round(LE::readFloat($str), $accuracy);
 	}
 
 	/**
 	 * Writes a 4-byte little-endian floating-point number.
 	 */
 	public static function writeLFloat(float $value) : string{
-		return pack("g", $value);
+		return LE::writeFloat($value);
 	}
 
 	/**
@@ -322,14 +321,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readDouble(string $str) : float{
-		return self::safeUnpack("E", $str, self::SIZEOF_DOUBLE)[1];
+		return BE::readDouble($str);
 	}
 
 	/**
 	 * Writes an 8-byte floating-point number.
 	 */
 	public static function writeDouble(float $value) : string{
-		return pack("E", $value);
+		return BE::writeDouble($value);
 	}
 
 	/**
@@ -338,14 +337,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLDouble(string $str) : float{
-		return self::safeUnpack("e", $str, self::SIZEOF_DOUBLE)[1];
+		return LE::readDouble($str);
 	}
 
 	/**
 	 * Writes an 8-byte floating-point little-endian number.
 	 */
 	public static function writeLDouble(float $value) : string{
-		return pack("e", $value);
+		return LE::writeDouble($value);
 	}
 
 	/**
@@ -354,14 +353,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLong(string $str) : int{
-		return self::safeUnpack("J", $str, self::SIZEOF_LONG)[1];
+		return BE::readLong($str);
 	}
 
 	/**
 	 * Writes an 8-byte integer.
 	 */
 	public static function writeLong(int $value) : string{
-		return pack("J", $value);
+		return BE::writeLong($value);
 	}
 
 	/**
@@ -370,14 +369,14 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readLLong(string $str) : int{
-		return self::safeUnpack("P", $str, self::SIZEOF_LONG)[1];
+		return LE::readLong($str);
 	}
 
 	/**
 	 * Writes an 8-byte little-endian integer.
 	 */
 	public static function writeLLong(int $value) : string{
-		return pack("P", $value);
+		return LE::writeLong($value);
 	}
 
 	/**
@@ -388,9 +387,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readVarInt(string $buffer, int &$offset) : int{
-		$raw = self::readUnsignedVarInt($buffer, $offset);
-		$temp = ((($raw << 63) >> 63) ^ $raw) >> 1;
-		return $temp ^ ($raw & (1 << 63));
+		return VarInt::readInt($buffer, $offset);
 	}
 
 	/**
@@ -401,28 +398,14 @@ class Binary{
 	 * @throws BinaryDataException if the var-int did not end after 5 bytes or there were not enough bytes
 	 */
 	public static function readUnsignedVarInt(string $buffer, int &$offset) : int{
-		$value = 0;
-		for($i = 0; $i <= 28; $i += 7){
-			if(!isset($buffer[$offset])){
-				throw new BinaryDataException("No bytes left in buffer");
-			}
-			$b = ord($buffer[$offset++]);
-			$value |= (($b & 0x7f) << $i);
-
-			if(($b & 0x80) === 0){
-				return $value;
-			}
-		}
-
-		throw new BinaryDataException("VarInt did not terminate after 5 bytes!");
+		return VarInt::readUnsignedInt($buffer, $offset);
 	}
 
 	/**
 	 * Writes a 32-bit integer as a zigzag-encoded variable-length integer.
 	 */
 	public static function writeVarInt(int $v) : string{
-		$v = ($v << 32 >> 32);
-		return self::writeUnsignedVarInt(($v << 1) ^ ($v >> 31));
+		return VarInt::writeInt($v);
 	}
 
 	/**
@@ -431,20 +414,7 @@ class Binary{
 	 * @return string up to 5 bytes
 	 */
 	public static function writeUnsignedVarInt(int $value) : string{
-		$buf = "";
-		$remaining = $value & 0xffffffff;
-		for($i = 0; $i < 5; ++$i){
-			if(($remaining >> 7) !== 0){
-				$buf .= chr($remaining | 0x80);
-			}else{
-				$buf .= chr($remaining & 0x7f);
-				return $buf;
-			}
-
-			$remaining = (($remaining >> 7) & (PHP_INT_MAX >> 6)); //PHP really needs a logical right-shift operator
-		}
-
-		throw new InvalidArgumentException("Value too large to be encoded as a VarInt");
+		return VarInt::writeUnsignedInt($value);
 	}
 
 	/**
@@ -455,9 +425,7 @@ class Binary{
 	 * @throws BinaryDataException
 	 */
 	public static function readVarLong(string $buffer, int &$offset) : int{
-		$raw = self::readUnsignedVarLong($buffer, $offset);
-		$temp = ((($raw << 63) >> 63) ^ $raw) >> 1;
-		return $temp ^ ($raw & (1 << 63));
+		return VarInt::readLong($buffer, $offset);
 	}
 
 	/**
@@ -468,46 +436,20 @@ class Binary{
 	 * @throws BinaryDataException if the var-int did not end after 10 bytes or there were not enough bytes
 	 */
 	public static function readUnsignedVarLong(string $buffer, int &$offset) : int{
-		$value = 0;
-		for($i = 0; $i <= 63; $i += 7){
-			if(!isset($buffer[$offset])){
-				throw new BinaryDataException("No bytes left in buffer");
-			}
-			$b = ord($buffer[$offset++]);
-			$value |= (($b & 0x7f) << $i);
-
-			if(($b & 0x80) === 0){
-				return $value;
-			}
-		}
-
-		throw new BinaryDataException("VarLong did not terminate after 10 bytes!");
+		return VarInt::readUnsignedLong($buffer, $offset);
 	}
 
 	/**
 	 * Writes a 64-bit integer as a zigzag-encoded variable-length long.
 	 */
 	public static function writeVarLong(int $v) : string{
-		return self::writeUnsignedVarLong(($v << 1) ^ ($v >> 63));
+		return VarInt::writeLong($v);
 	}
 
 	/**
 	 * Writes a 64-bit unsigned integer as a variable-length long.
 	 */
 	public static function writeUnsignedVarLong(int $value) : string{
-		$buf = "";
-		$remaining = $value;
-		for($i = 0; $i < 10; ++$i){
-			if(($remaining >> 7) !== 0){
-				$buf .= chr($remaining | 0x80); //Let chr() take the last byte of this, it's faster than adding another & 0x7f.
-			}else{
-				$buf .= chr($remaining & 0x7f);
-				return $buf;
-			}
-
-			$remaining = (($remaining >> 7) & (PHP_INT_MAX >> 6)); //PHP really needs a logical right-shift operator
-		}
-
-		throw new InvalidArgumentException("Value too large to be encoded as a VarLong");
+		return VarInt::writeUnsignedLong($value);
 	}
 }
