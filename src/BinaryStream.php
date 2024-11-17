@@ -330,14 +330,19 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getVarInt() : int{
-		return $this->byteBuffer->readSignedVarInt();
+		//return $this->byteBuffer->readSignedVarInt();
+		$raw = $this->byteBuffer->readUnsignedVarInt();
+		$temp = ((($raw << 63) >> 63) ^ $raw) >> 1;
+		return $temp ^ ($raw & (1 << 63));
 	}
 
 	/**
 	 * Writes a 32-bit zigzag-encoded variable-length integer to the end of the buffer.
 	 */
 	public function putVarInt(int $v) : void{
-		$this->byteBuffer->writeSignedVarInt($v);
+		//$this->byteBuffer->writeSignedVarInt($v);
+		$v = ($v << 32 >> 32);
+		$this->byteBuffer->writeUnsignedVarInt(($v << 1) ^ ($v >> 31));
 	}
 
 	/**
@@ -364,14 +369,18 @@ class BinaryStream{
 	 * @throws BinaryDataException
 	 */
 	public function getVarLong() : int{
-		return $this->byteBuffer->readSignedVarLong();
+		//return $this->byteBuffer->readSignedVarLong();
+		$raw = $this->byteBuffer->readUnsignedVarLong();
+		$temp = ((($raw << 63) >> 63) ^ $raw) >> 1;
+		return $temp ^ ($raw & (1 << 63));
 	}
 
 	/**
 	 * Writes a 64-bit zigzag-encoded variable-length integer to the end of the buffer.
 	 */
 	public function putVarLong(int $v) : void{
-		$this->byteBuffer->writeSignedVarLong($v);
+		//$this->byteBuffer->writeSignedVarLong($v);
+		$this->byteBuffer->writeUnsignedVarLong(($v << 1) ^ ($v >> 63));
 	}
 
 	/**
